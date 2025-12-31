@@ -2,230 +2,228 @@
 <html lang="uk">
 <head>
 <meta charset="UTF-8">
-<title>CYBER ANOMALY GALLERY</title>
+<title>Cyberpunk Math Labyrinth</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-
 <style>
-html, body {
-    margin: 0;
-    padding: 0;
-    overflow: hidden;
-    background: black;
-    font-family: monospace;
-}
-
+html, body { margin:0; padding:0; overflow:hidden; background:black; font-family: monospace; }
 #info {
-    position: absolute;
-    display: none;
-    color: #00ffff;
-    background: rgba(0,0,0,0.7);
-    border: 1px solid #00ffff;
-    padding: 10px;
-    text-shadow: 0 0 6px #00ffff;
-    pointer-events: none;
+    position:absolute;
+    display:none;
+    color:#00ffff;
+    background:rgba(0,0,0,0.7);
+    border:1px solid #00ffff;
+    padding:10px;
+    text-shadow:0 0 6px #00ffff;
+    pointer-events:none;
 }
 </style>
 </head>
-
 <body>
-<div id="info">
-<b>Woman</b><br>
-oil on canvas<br>
-Roman Katyuschenko<br>
-Ukraine, 2013<br>
-50 × 70 cm
-</div>
-
+<div id="info"></div>
 <script>
 let scene, camera, renderer;
-let anomalies = [];
-let paintings = [];
-let stars;
+let objects = [];
+let particleSystems = [];
 let info = document.getElementById("info");
 
 init();
 animate();
 
 /* ================= INIT ================= */
-
-function init() {
+function init(){
     scene = new THREE.Scene();
-    scene.fog = new THREE.Fog(0x000000, 15, 90);
+    scene.fog = new THREE.Fog(0x000000, 15, 120);
 
-    camera = new THREE.PerspectiveCamera(
-        75,
-        window.innerWidth / window.innerHeight,
-        0.1,
-        300
-    );
-    camera.position.set(0, 2, 20);
+    camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 500);
+    camera.position.set(0,3,20);
+    camera.lookAt(0,3,0);
 
-    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer = new THREE.WebGLRenderer({antialias:true});
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
 
     addLight();
-    createAnomalies();
+    createObjects();
+    createFloor();
     createStars();
 
     window.addEventListener("resize", onResize);
     document.addEventListener("keydown", navigation);
-    document.addEventListener("mousemove", moveInfo);
 }
 
 /* ================= LIGHT ================= */
-
-function addLight() {
-    scene.add(new THREE.AmbientLight(0x00ffff, 0.3));
-
-    const neon = new THREE.PointLight(0x00ffff, 2, 100);
-    neon.position.set(0, 20, 0);
+function addLight(){
+    scene.add(new THREE.AmbientLight(0x00ffff,0.2));
+    const neon = new THREE.PointLight(0x00ffff,2,100);
+    neon.position.set(0,20,0);
     scene.add(neon);
 }
 
-/* ================= ANOMALIES ================= */
-
-function createAnomalies() {
-    const radius = 16;
-
-    for (let i = 0; i < 13; i++) {
-        const angle = (i / 13) * Math.PI * 2;
-        const x = Math.cos(angle) * radius;
-        const z = Math.sin(angle) * radius;
-
-        // глітч-стовп
-        const pillarGeo = new THREE.CylinderGeometry(0.5, 0.8, 7, 14, 20, true);
-        const pillarMat = new THREE.MeshBasicMaterial({
-            color: 0x00ffff,
-            wireframe: true,
-            transparent: true,
-            opacity: 0.7
-        });
-
-        const pillar = new THREE.Mesh(pillarGeo, pillarMat);
-        pillar.position.set(x, 3.5, z);
-        pillar.userData.index = i;
-        anomalies.push(pillar);
-        scene.add(pillar);
-
-        // картина
-        const tex = new THREE.TextureLoader().load(`${i + 1}.jpg`);
-        const pic = new THREE.Mesh(
-            new THREE.PlaneGeometry(4, 5),
-            new THREE.MeshBasicMaterial({
-                map: tex,
-                transparent: true,
-                opacity: 0
-            })
-        );
-        pic.position.set(x, 3.5, z);
-        pic.lookAt(0, 3, 0);
-        paintings.push(pic);
-        scene.add(pic);
-    }
+/* ================= FLOOR ================= */
+function createFloor(){
+    const floor = new THREE.Mesh(
+        new THREE.PlaneGeometry(200,200),
+        new THREE.MeshBasicMaterial({color:0x001111, wireframe:true, transparent:true, opacity:0.15})
+    );
+    floor.rotation.x = -Math.PI/2;
+    scene.add(floor);
 }
 
 /* ================= STARS ================= */
-
-function createStars() {
+function createStars(){
     const geo = new THREE.BufferGeometry();
-    const v = [];
-
-    for (let i = 0; i < 2500; i++) {
+    const v=[];
+    for(let i=0;i<3000;i++){
         v.push(
             THREE.MathUtils.randFloatSpread(250),
             THREE.MathUtils.randFloatSpread(250),
             THREE.MathUtils.randFloatSpread(250)
         );
     }
-
-    geo.setAttribute("position", new THREE.Float32BufferAttribute(v, 3));
-    const mat = new THREE.PointsMaterial({ color: 0x00ffff, size: 0.8 });
-    stars = new THREE.Points(geo, mat);
+    geo.setAttribute("position", new THREE.Float32BufferAttribute(v,3));
+    const mat = new THREE.PointsMaterial({color:0x00ffff,size:0.8});
+    const stars = new THREE.Points(geo,mat);
     scene.add(stars);
 }
 
-/* ================= ANIMATE ================= */
+/* ================= OBJECTS ================= */
+function createObjects(){
+    const radii=[16,10];
+    const counts=[8,5];
+    const objectTypes=[
+        "menger","julia","lorenz","rosser","octa","torusknot","fibonacci",
+        "lsystem","mobius","clifford","perlin","hypercube","boid"
+    ];
 
-function animate() {
-    requestAnimationFrame(animate);
+    const colors=[
+        0xff00ff,0x00ff00,0xff0000,0x00ffff,0xffff00,
+        0xff8800,0x8888ff,0xff00aa,0x00ffaa,0xff0055,
+        0x00ffff,0xffffff,0xffaa00
+    ];
 
-    stars.rotation.y += 0.0005;
+    let idx=0;
+    for(let r=0;r<radii.length;r++){
+        let radius = radii[r];
+        let count = counts[r];
+        for(let i=0;i<count;i++){
+            if(idx>=objectTypes.length) break;
+            let angle=(i/count)*Math.PI*2;
+            let x=Math.cos(angle)*radius;
+            let z=Math.sin(angle)*radius;
+            let obj=createMathObject(objectTypes[idx], x, z, idx, colors[idx]);
+            objects.push(obj);
+            scene.add(obj);
 
-    anomalies.forEach((p, i) => {
-        // глітч
-        p.rotation.y += 0.01;
-        p.position.y = 3.5 + Math.sin(Date.now() * 0.002 + i) * 0.4;
-        p.scale.x = 1 + Math.random() * 0.03;
-        p.scale.z = 1 + Math.random() * 0.03;
-
-        const d = camera.position.distanceTo(p.position);
-        const pic = paintings[i];
-
-        if (d < 6) {
-            pic.material.opacity += 0.05;
-            p.material.opacity -= 0.05;
-            info.style.display = "block";
-        } else {
-            pic.material.opacity -= 0.05;
-            p.material.opacity += 0.05;
-            info.style.display = "none";
+            // додаткові частинки/аура
+            createAura(obj, colors[idx]);
+            idx++;
         }
-
-        pic.material.opacity = THREE.MathUtils.clamp(pic.material.opacity, 0, 1);
-        p.material.opacity = THREE.MathUtils.clamp(p.material.opacity, 0.2, 0.8);
-    });
-
-    renderer.render(scene, camera);
-}
-
-/* ================= NAVIGATION (ТВОЯ) ================= */
-
-function navigation(event) {
-    const speed = 0.6;
-    const rot = 0.05;
-
-    switch (event.key.toLowerCase()) {
-        case "w":
-            camera.translateZ(-speed);
-            break;
-        case "s":
-            camera.translateZ(speed);
-            break;
-        case "a":
-            camera.translateX(-speed);
-            break;
-        case "d":
-            camera.translateX(speed);
-            break;
-        case "e":
-            camera.translateY(speed);
-            break;
-        case "x":
-            camera.translateY(-speed);
-            break;
-        case "arrowleft":
-            camera.rotateY(rot);
-            break;
-        case "arrowright":
-            camera.rotateY(-rot);
-            break;
     }
 }
 
-/* ================= INFO ================= */
+/* ================= CREATE MATH OBJECT ================= */
+function createMathObject(type,x,z,idx,color){
+    let mesh;
+    const mat = new THREE.MeshBasicMaterial({color:color, wireframe:true, transparent:true, opacity:0.2});
+    switch(type){
+        case "menger":
+            mesh = new THREE.Mesh(new THREE.BoxGeometry(2,2,2), mat); break;
+        case "julia":
+            mesh = new THREE.Mesh(new THREE.SphereGeometry(1.5,24,24), mat); break;
+        case "lorenz":
+            mesh = new THREE.Mesh(new THREE.TorusGeometry(1.5,0.1,16,100), mat); break;
+        case "rosser":
+            mesh = new THREE.Mesh(new THREE.ConeGeometry(1,3,12), mat); break;
+        case "octa":
+            mesh = new THREE.Mesh(new THREE.OctahedronGeometry(1.5), mat); break;
+        case "torusknot":
+            mesh = new THREE.Mesh(new THREE.TorusKnotGeometry(1,0.3,100,16), mat); break;
+        case "fibonacci":
+            mesh = new THREE.Mesh(new THREE.TorusGeometry(2,0.3,16,100), mat); break;
+        case "lsystem":
+            mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.5,3,12), mat); break;
+        case "mobius":
+            mesh = new THREE.Mesh(new THREE.MobiusGeometry(2,0.5,32,16), mat); break;
+        case "clifford":
+            mesh = new THREE.Mesh(new THREE.DodecahedronGeometry(1.5), mat); break;
+        case "perlin":
+            mesh = new THREE.Mesh(new THREE.SphereGeometry(1.8,16,16), mat); break;
+        case "hypercube":
+            mesh = new THREE.Mesh(new THREE.BoxGeometry(2,2,2), mat); break;
+        case "boid":
+            mesh = new THREE.Mesh(new THREE.ConeGeometry(1,2,6), mat); break;
+    }
+    mesh.position.set(x,3.5,z);
+    mesh.userData.type=type;
+    return mesh;
+}
 
-function moveInfo(e) {
-    info.style.left = e.clientX + 15 + "px";
-    info.style.top = e.clientY + "px";
+/* ================= AURA / PARTICLES ================= */
+function createAura(obj,color){
+    const g = new THREE.SphereGeometry(3,8,8);
+    const m = new THREE.MeshBasicMaterial({color:color, transparent:true, opacity:0.1, wireframe:true});
+    const aura = new THREE.Mesh(g,m);
+    aura.position.copy(obj.position);
+    particleSystems.push(aura);
+    scene.add(aura);
+}
+
+/* ================= ANIMATE ================= */
+function animate(){
+    requestAnimationFrame(animate);
+
+    objects.forEach((obj,i)=>{
+        const d = camera.position.distanceTo(obj.position);
+
+        // обертання і пульсація
+        obj.rotation.x += 0.01*(i%3+1);
+        obj.rotation.y += 0.015*(i%2+1);
+        obj.scale.x = 1 + Math.sin(Date.now()*0.003 + i)*0.15;
+        obj.scale.y = 1 + Math.cos(Date.now()*0.002 + i)*0.15;
+        obj.scale.z = 1 + Math.sin(Date.now()*0.002 + i*0.5)*0.15;
+
+        // проявлення при наближенні
+        if(d<6){
+            obj.material.opacity = THREE.MathUtils.lerp(obj.material.opacity,1,0.05);
+            info.style.display="block";
+            info.style.left = (window.innerWidth/2-100)+'px';
+            info.style.top = (window.innerHeight-100)+'px';
+            info.innerHTML=`${obj.userData.type.toUpperCase()}<br>Аномалія ${i+1}`;
+        } else {
+            obj.material.opacity = THREE.MathUtils.lerp(obj.material.opacity,0.2,0.05);
+        }
+        obj.material.opacity = THREE.MathUtils.clamp(obj.material.opacity,0.1,1);
+    });
+
+    // аура/частинки
+    particleSystems.forEach((p,i)=>{
+        p.rotation.y += 0.002*(i%3+1);
+        p.material.opacity = 0.05 + 0.05*Math.sin(Date.now()*0.002 + i);
+    });
+
+    renderer.render(scene,camera);
+}
+
+/* ================= NAVIGATION ================= */
+function navigation(event){
+    const speed=0.6, rot=0.05;
+    switch(event.key.toLowerCase()){
+        case "w": camera.translateZ(-speed); break;
+        case "s": camera.translateZ(speed); break;
+        case "a": camera.translateX(-speed); break;
+        case "d": camera.translateX(speed); break;
+        case "e": camera.translateY(speed); break;
+        case "x": camera.translateY(-speed); break;
+        case "arrowleft": camera.rotateY(rot); break;
+        case "arrowright": camera.rotateY(-rot); break;
+    }
 }
 
 /* ================= RESIZE ================= */
-
-function onResize() {
-    camera.aspect = window.innerWidth / window.innerHeight;
+function onResize(){
+    camera.aspect=window.innerWidth/window.innerHeight;
     camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setSize(window.innerWidth,window.innerHeight);
 }
 </script>
 </body>
