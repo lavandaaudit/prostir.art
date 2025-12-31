@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<title>Ібонаріум • Віртуальна Галерея</title>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128/build/three.min.js"></script>
+
+<style>
+body {
+    margin: 0;
+    overflow: hidden;
+    background: black;
+    font-family: "Segoe UI", monospace;
+}
+
+#hint {
+    position: fixed;
+    right: 20px;
+    top: 20px;
+    color: #00ffff;
+    font-size: 14px;
+    background: rgba(0,0,0,0.6);
+    padding: 12px;
+    border: 1px solid #00ffff55;
+    box-shadow: 0 0 15px #00ffff55;
+}
+
+#info {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    color: white;
+    background: rgba(0,0,0,0.7);
+    padding: 12px;
+    border-left: 3px solid #ff00ff;
+    display: none;
+    max-width: 300px;
+}
+</style>
+</head>
+
+<body>
+
+<div id="hint">
+<b>РУХ</b><br>
+W / S — вперед / назад<br>
+A / D — вліво / вправо<br>
+← → — поворот<br>
+E / X — вгору / вниз
+</div>
+
+<div id="info"></div>
+
+<script>
+let scene, camera, renderer;
+let pillars = [];
+let raycaster = new THREE.Raycaster();
+let mouse = new THREE.Vector2();
+let info = document.getElementById("info");
+
+init();
+animate();
+
+/* ---------- INIT ---------- */
+function init() {
+    scene = new THREE.Scene();
+    scene.fog = new THREE.Fog(0x000000, 10, 60);
+
+    camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 200);
+    camera.position.set(0, 2, 15);
+
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    /* СВІТЛО */
+    scene.add(new THREE.AmbientLight(0x222222));
+
+    const neon = new THREE.PointLight(0x00ffff, 2, 50);
+    neon.position.set(0, 10, 0);
+    scene.add(neon);
+
+    createLightWall();
+    createPillars();
+
+    window.addEventListener("resize", onResize);
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("keydown", move);
+}
+
+/* ---------- СВІТЛОВА СТІНА ---------- */
+function createLightWall() {
+    const geo = new THREE.PlaneGeometry(60, 20);
+    const mat = new THREE.MeshBasicMaterial({
+        color: 0x00ffff,
+        transparent: true,
+        opacity: 0.05
+    });
+    const wall = new THREE.Mesh(geo, mat);
+    wall.position.z = -25;
+    scene.add(wall);
+}
+
+/* ---------- СТОВПИ ---------- */
+function createPillars() {
+    const loader = new THREE.TextureLoader();
+    const radius = 12;
+
+    for (let i = 0; i < 13; i++) {
+        const angle = i / 13 * Math.PI * 2;
+        const x = Math.cos(angle) * radius;
+        const z = Math.sin(angle) * radius;
+
+        const tex = loader.load(`img/${i+1}.jpg`);
+
+        const pillar = new THREE.Mesh(
+            new THREE.BoxGeometry(1.5, 4, 0.2),
+            new THREE.MeshStandardMaterial({
+                map: tex,
+                emissive: 0x00ffff,
+                emissiveIntensity: 0.25
+            })
+        );
+
+        pillar.position.set(x, 2, z);
+        pillar.lookAt(0,2,0);
+
+        pillar.userData = {
+            title: `Картина ${i+1}`,
+            text: `Автор: Roman Katyuschenko<br>Рік: 2013–2025<br>Ібонаріум`
+        };
+
+        pillars.push(pillar);
+        scene.add(pillar);
+
+        /* НЕОНОВЕ ПІДСВІЧУВАННЯ */
+        const glow = new THREE.PointLight(0xff00ff, 1, 6);
+        glow.position.copy(pillar.position);
+        scene.add(glow);
+    }
+}
+
+/* ---------- ІНФО ---------- */
+function onMouseMove(e) {
+    mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+}
+
+/* ---------- РУХ ---------- */
+function move(e) {
+    const s = 0.5;
+    if (e.key === "w") camera.translateZ(-s);
+    if (e.key === "s") camera.translateZ(s);
+    if (e.key === "a") camera.translateX(-s);
+    if (e.key === "d") camera.translateX(s);
+    if (e.key === "e") camera.position.y += s;
+    if (e.key === "x") camera.position.y -= s;
+    if (e.key === "ArrowLeft") camera.rotation.y += 0.05;
+    if (e.key === "ArrowRight") camera.rotation.y -= 0.05;
+}
+
+/* ---------- ANIMATE ---------- */
+function animate() {
+    requestAnimationFrame(animate);
+
+    raycaster.setFromCamera(mouse, camera);
+    const hit = raycaster.intersectObjects(pillars);
+
+    if (hit.length > 0) {
+        info.style.display = "block";
+        info.innerHTML = `<b>${hit[0].object.userData.title}</b><br>${hit[0].object.userData.text}`;
+    } else {
+        info.style.display = "none";
+    }
+
+    renderer.render(scene, camera);
+}
+
+function onResize() {
+    camera.aspect = window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+}
+</script>
+
+</body>
+</html>
