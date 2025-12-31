@@ -23,7 +23,6 @@ html, body { margin:0; padding:0; overflow:hidden; background:black; font-family
 <script>
 let scene, camera, renderer;
 let objects = [];
-let particleSystems = [];
 let info = document.getElementById("info");
 
 init();
@@ -53,7 +52,7 @@ function init(){
 
 /* ================= LIGHT ================= */
 function addLight(){
-    scene.add(new THREE.AmbientLight(0x00ffff,0.2));
+    scene.add(new THREE.AmbientLight(0x00ffff,0.3));
     const neon = new THREE.PointLight(0x00ffff,2,100);
     neon.position.set(0,20,0);
     scene.add(neon);
@@ -73,7 +72,7 @@ function createFloor(){
 function createStars(){
     const geo = new THREE.BufferGeometry();
     const v=[];
-    for(let i=0;i<3000;i++){
+    for(let i=0;i<2000;i++){
         v.push(
             THREE.MathUtils.randFloatSpread(250),
             THREE.MathUtils.randFloatSpread(250),
@@ -90,11 +89,6 @@ function createStars(){
 function createObjects(){
     const radii=[16,10];
     const counts=[8,5];
-    const objectTypes=[
-        "menger","julia","lorenz","rosser","octa","torusknot","fibonacci",
-        "lsystem","mobius","clifford","perlin","hypercube","boid"
-    ];
-
     const colors=[
         0xff00ff,0x00ff00,0xff0000,0x00ffff,0xffff00,
         0xff8800,0x8888ff,0xff00aa,0x00ffaa,0xff0055,
@@ -106,66 +100,21 @@ function createObjects(){
         let radius = radii[r];
         let count = counts[r];
         for(let i=0;i<count;i++){
-            if(idx>=objectTypes.length) break;
+            if(idx>=colors.length) break;
             let angle=(i/count)*Math.PI*2;
             let x=Math.cos(angle)*radius;
             let z=Math.sin(angle)*radius;
-            let obj=createMathObject(objectTypes[idx], x, z, idx, colors[idx]);
+            let obj = new THREE.Mesh(
+                new THREE.BoxGeometry(2,2,2),
+                new THREE.MeshBasicMaterial({color:colors[idx], wireframe:true, transparent:true, opacity:0.2})
+            );
+            obj.position.set(x,3.5,z);
+            obj.userData.id = idx;
             objects.push(obj);
             scene.add(obj);
-
-            // додаткові частинки/аура
-            createAura(obj, colors[idx]);
             idx++;
         }
     }
-}
-
-/* ================= CREATE MATH OBJECT ================= */
-function createMathObject(type,x,z,idx,color){
-    let mesh;
-    const mat = new THREE.MeshBasicMaterial({color:color, wireframe:true, transparent:true, opacity:0.2});
-    switch(type){
-        case "menger":
-            mesh = new THREE.Mesh(new THREE.BoxGeometry(2,2,2), mat); break;
-        case "julia":
-            mesh = new THREE.Mesh(new THREE.SphereGeometry(1.5,24,24), mat); break;
-        case "lorenz":
-            mesh = new THREE.Mesh(new THREE.TorusGeometry(1.5,0.1,16,100), mat); break;
-        case "rosser":
-            mesh = new THREE.Mesh(new THREE.ConeGeometry(1,3,12), mat); break;
-        case "octa":
-            mesh = new THREE.Mesh(new THREE.OctahedronGeometry(1.5), mat); break;
-        case "torusknot":
-            mesh = new THREE.Mesh(new THREE.TorusKnotGeometry(1,0.3,100,16), mat); break;
-        case "fibonacci":
-            mesh = new THREE.Mesh(new THREE.TorusGeometry(2,0.3,16,100), mat); break;
-        case "lsystem":
-            mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.5,3,12), mat); break;
-        case "mobius":
-            mesh = new THREE.Mesh(new THREE.MobiusGeometry(2,0.5,32,16), mat); break;
-        case "clifford":
-            mesh = new THREE.Mesh(new THREE.DodecahedronGeometry(1.5), mat); break;
-        case "perlin":
-            mesh = new THREE.Mesh(new THREE.SphereGeometry(1.8,16,16), mat); break;
-        case "hypercube":
-            mesh = new THREE.Mesh(new THREE.BoxGeometry(2,2,2), mat); break;
-        case "boid":
-            mesh = new THREE.Mesh(new THREE.ConeGeometry(1,2,6), mat); break;
-    }
-    mesh.position.set(x,3.5,z);
-    mesh.userData.type=type;
-    return mesh;
-}
-
-/* ================= AURA / PARTICLES ================= */
-function createAura(obj,color){
-    const g = new THREE.SphereGeometry(3,8,8);
-    const m = new THREE.MeshBasicMaterial({color:color, transparent:true, opacity:0.1, wireframe:true});
-    const aura = new THREE.Mesh(g,m);
-    aura.position.copy(obj.position);
-    particleSystems.push(aura);
-    scene.add(aura);
 }
 
 /* ================= ANIMATE ================= */
@@ -188,17 +137,11 @@ function animate(){
             info.style.display="block";
             info.style.left = (window.innerWidth/2-100)+'px';
             info.style.top = (window.innerHeight-100)+'px';
-            info.innerHTML=`${obj.userData.type.toUpperCase()}<br>Аномалія ${i+1}`;
+            info.innerHTML=`Cyber Object ${i+1}`;
         } else {
             obj.material.opacity = THREE.MathUtils.lerp(obj.material.opacity,0.2,0.05);
         }
         obj.material.opacity = THREE.MathUtils.clamp(obj.material.opacity,0.1,1);
-    });
-
-    // аура/частинки
-    particleSystems.forEach((p,i)=>{
-        p.rotation.y += 0.002*(i%3+1);
-        p.material.opacity = 0.05 + 0.05*Math.sin(Date.now()*0.002 + i);
     });
 
     renderer.render(scene,camera);
@@ -214,8 +157,8 @@ function navigation(event){
         case "d": camera.translateX(speed); break;
         case "e": camera.translateY(speed); break;
         case "x": camera.translateY(-speed); break;
-        case "arrowleft": camera.rotateY(rot); break;
-        case "arrowright": camera.rotateY(-rot); break;
+        case "arrowleft": camera.rotation.y += rot; break;
+        case "arrowright": camera.rotation.y -= rot; break;
     }
 }
 
