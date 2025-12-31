@@ -3,206 +3,225 @@
 <head>
 <meta charset="UTF-8">
 <title>Ібонаріум • Простір Світла</title>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128/build/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
 <style>
 body {
-    margin: 0;
-    overflow: hidden;
-    background: black;
-    font-family: monospace;
+    margin:0;
+    overflow:hidden;
+    background:black;
+    font-family:monospace;
 }
 
-#hint {
-    position: fixed;
-    right: 20px;
-    top: 20px;
-    color: #00ffff;
-    background: rgba(0,0,0,0.6);
-    padding: 12px;
-    border: 1px solid #00ffff55;
+/* HUD */
+#hud {
+    position:fixed;
+    right:20px;
+    bottom:20px;
+    color:#00ffff;
+    font-size:12px;
+    opacity:0.8;
+    text-align:right;
 }
 
 #info {
-    position: fixed;
-    bottom: 20px;
-    left: 20px;
-    max-width: 320px;
-    color: white;
-    background: rgba(0,0,0,0.7);
-    padding: 12px;
-    border-left: 3px solid #ff00ff;
-    display: none;
+    position:fixed;
+    left:20px;
+    bottom:20px;
+    color:white;
+    background:rgba(0,0,0,0.6);
+    padding:12px;
+    border-left:3px solid #ff00ff;
+    max-width:300px;
+    display:none;
 }
 </style>
 </head>
 
 <body>
 
-<div id="hint">
-<b>РУХ</b><br>
-W / S — вперед / назад<br>
-A / D — вліво / вправо<br>
-← → — поворот<br>
-E / X — вгору / вниз
+<div id="hud">
+<span id="compass">⇢</span><br>
+<span id="nearest">—</span>
 </div>
 
 <div id="info"></div>
 
 <script>
 let scene, camera, renderer;
-let raycaster = new THREE.Raycaster();
-let mouse = new THREE.Vector2();
-let pillars = [];
-let stars = [];
-const info = document.getElementById("info");
+let stars=[], galleries=[];
+let raycaster=new THREE.Raycaster();
+let mouse=new THREE.Vector2();
+let clock=new THREE.Clock();
+
+const info=document.getElementById("info");
+const compass=document.getElementById("compass");
+const nearest=document.getElementById("nearest");
 
 init();
 animate();
 
 /* ---------- INIT ---------- */
-function init() {
-    scene = new THREE.Scene();
-    scene.fog = new THREE.Fog(0x000000, 50, 300);
+function init(){
+    scene=new THREE.Scene();
+    scene.fog=new THREE.Fog(0x000000,30,400);
 
-    camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-    camera.position.set(0, 5, 30);
+    camera=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,0.1,1500);
+    camera.position.set(0,2,10);
 
-    renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer=new THREE.WebGLRenderer({antialias:true});
+    renderer.setSize(innerWidth,innerHeight);
     document.body.appendChild(renderer.domElement);
 
     scene.add(new THREE.AmbientLight(0x111111));
+    const mainLight=new THREE.PointLight(0x00ffff,2,200);
+    mainLight.position.set(0,40,20);
+    scene.add(mainLight);
 
     createStars();
-    createLightPillars();
+    createGallery();
 
-    window.addEventListener("resize", resize);
-    document.addEventListener("mousemove", mouseMove);
-    document.addEventListener("keydown", move);
+    addEventListener("resize",resize);
+    addEventListener("mousemove",mouseMove);
+    addEventListener("keydown",move);
 }
 
-/* ---------- ПЛАВАЮЧІ ЗІРКИ ---------- */
-function createStars() {
-    const geo = new THREE.SphereGeometry(0.3, 8, 8);
-    const mat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+/* ---------- ЗІРКИ ---------- */
+function createStars(){
+    const geo=new THREE.SphereGeometry(0.12,8,8);
+    const mat=new THREE.MeshBasicMaterial({color:0xffffff});
 
-    for (let i = 0; i < 2000; i++) {
-        const star = new THREE.Mesh(geo, mat);
-        star.position.set(
-            THREE.MathUtils.randFloatSpread(800),
-            THREE.MathUtils.randFloatSpread(400),
-            THREE.MathUtils.randFloatSpread(800)
+    for(let i=0;i<2000;i++){
+        const s=new THREE.Mesh(geo,mat);
+        s.position.set(
+            THREE.MathUtils.randFloatSpread(600),
+            THREE.MathUtils.randFloatSpread(300),
+            THREE.MathUtils.randFloatSpread(600)
         );
-        star.userData.speed = Math.random() * 0.02 + 0.005;
-        stars.push(star);
-        scene.add(star);
+        s.userData.speed=Math.random()*0.03+0.01;
+        stars.push(s);
+        scene.add(s);
     }
 }
 
-/* ---------- СТОВПИ СВІТЛА ---------- */
-function createLightPillars() {
-    const loader = new THREE.TextureLoader();
-    const spacing = 80;
+/* ---------- ГАЛЕРЕЯ ---------- */
+function createGallery(){
+    const loader=new THREE.TextureLoader();
+    const spacing=40;
 
-    for (let i = 0; i < 13; i++) {
-        const group = new THREE.Group();
+    for(let i=0;i<13;i++){
+        const g=new THREE.Group();
 
         /* світловий стовп */
-        const pillar = new THREE.Mesh(
-            new THREE.CylinderGeometry(1.2, 1.2, 40, 32, 1, true),
+        const pillar=new THREE.Mesh(
+            new THREE.CylinderGeometry(1.5,1.5,60,32,1,true),
             new THREE.MeshBasicMaterial({
-                color: 0x00ffff,
-                transparent: true,
-                opacity: 0.15,
-                side: THREE.DoubleSide
+                color:0x00ffff,
+                transparent:true,
+                opacity:0.12,
+                side:THREE.DoubleSide
             })
         );
-        pillar.position.y = 20;
-        group.add(pillar);
+        pillar.position.y=30;
+        g.add(pillar);
 
-        /* ядро світла */
-        const core = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.3, 0.3, 40, 16),
+        /* ядро (АНІМУЄТЬСЯ) */
+        const core=new THREE.Mesh(
+            new THREE.CylinderGeometry(0.4,0.4,60,16),
             new THREE.MeshBasicMaterial({
-                color: 0xff00ff,
-                transparent: true,
-                opacity: 0.6
+                color:0xff00ff,
+                transparent:true,
+                opacity:0.6
             })
         );
-        core.position.y = 20;
-        group.add(core);
+        core.position.y=30;
+        g.add(core);
 
-        /* картина */
-        const img = new THREE.Mesh(
-            new THREE.PlaneGeometry(6, 4),
+        /* панель */
+        const panel=new THREE.Mesh(
+            new THREE.BoxGeometry(6,4,0.4),
             new THREE.MeshBasicMaterial({
-                map: loader.load(`img/${i+1}.jpg`),
-                transparent: true
+                map:loader.load(`img/${i+1}.jpg`)
             })
         );
-        img.position.set(0, 10, 3);
-        group.add(img);
+        panel.position.set(0,10,2);
+        g.add(panel);
 
-        group.position.set(0, 0, -i * spacing);
+        g.position.z=-i*spacing;
+        g.userData={index:i+1,pillar,core,panel};
 
-        group.userData = {
-            title: `Картина ${i+1}`,
-            text: `Roman Katyuschenko<br>Ібонаріум<br>Перехід світла`
-        };
-
-        pillars.push(group);
-        scene.add(group);
+        galleries.push(g);
+        scene.add(g);
     }
 }
 
-/* ---------- MOUSE ---------- */
-function mouseMove(e) {
-    mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
-    mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+/* ---------- INPUT ---------- */
+function mouseMove(e){
+    mouse.x=(e.clientX/innerWidth)*2-1;
+    mouse.y=-(e.clientY/innerHeight)*2+1;
 }
 
-/* ---------- РУХ ---------- */
-function move(e) {
-    const s = 1.2;
-    if (e.key === "w") camera.translateZ(-s);
-    if (e.key === "s") camera.translateZ(s);
-    if (e.key === "a") camera.translateX(-s);
-    if (e.key === "d") camera.translateX(s);
-    if (e.key === "e") camera.position.y += s;
-    if (e.key === "x") camera.position.y -= s;
-    if (e.key === "ArrowLeft") camera.rotation.y += 0.04;
-    if (e.key === "ArrowRight") camera.rotation.y -= 0.04;
+function move(e){
+    const s=1;
+    if(e.key==="w") camera.translateZ(-s);
+    if(e.key==="s") camera.translateZ(s);
+    if(e.key==="a") camera.translateX(-s);
+    if(e.key==="d") camera.translateX(s);
+    if(e.key==="ArrowLeft") camera.rotation.y+=0.04;
+    if(e.key==="ArrowRight") camera.rotation.y-=0.04;
 }
 
 /* ---------- LOOP ---------- */
-function animate() {
+function animate(){
     requestAnimationFrame(animate);
+    const t=clock.getElapsedTime();
 
-    stars.forEach(s => {
-        s.position.y += s.userData.speed;
-        if (s.position.y > 200) s.position.y = -200;
+    /* дрейф камери */
+    camera.position.y+=Math.sin(t*0.3)*0.002;
+    camera.rotation.z=Math.sin(t*0.2)*0.001;
+
+    /* зірки */
+    stars.forEach(s=>{
+        s.position.y+=s.userData.speed;
+        if(s.position.y>150) s.position.y=-150;
     });
 
-    raycaster.setFromCamera(mouse, camera);
-    const hit = raycaster.intersectObjects(pillars, true);
+    /* світло + пульсація */
+    let closest=null, minDist=9999;
 
-    if (hit.length > 0) {
-        info.style.display = "block";
-        info.innerHTML = `<b>${hit[0].object.parent.userData.title}</b><br>${hit[0].object.parent.userData.text}`;
-    } else {
-        info.style.display = "none";
-    }
+    galleries.forEach(g=>{
+        const d=camera.position.distanceTo(g.position);
 
-    renderer.render(scene, camera);
+        if(d<minDist){minDist=d; closest=g;}
+
+        const pulse=Math.max(0,1-d/30);
+        g.userData.core.position.y=30+Math.sin(t*2)*3;
+        g.userData.core.material.opacity=0.4+pulse*0.6;
+        g.userData.pillar.material.opacity=0.08+pulse*0.2;
+        g.userData.pillar.scale.setScalar(1+pulse*0.2);
+        g.userData.panel.scale.setScalar(1+pulse*0.05);
+    });
+
+    /* HUD */
+    compass.textContent = camera.rotation.y>0 ? "⇠" : "⇢";
+    nearest.textContent = closest ? `картина ${closest.userData.index}` : "—";
+
+    /* info */
+    raycaster.setFromCamera(mouse,camera);
+    const hit=raycaster.intersectObjects(scene.children,true);
+    if(hit.length){
+        info.style.display="block";
+        info.innerHTML=`Картина ${closest.userData.index}<br>Ібонаріум`;
+    } else info.style.display="none";
+
+    renderer.render(scene,camera);
 }
 
-function resize() {
-    camera.aspect = window.innerWidth/window.innerHeight;
+function resize(){
+    camera.aspect=innerWidth/innerHeight;
     camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setSize(innerWidth,innerHeight);
 }
 </script>
-
 </body>
 </html>
