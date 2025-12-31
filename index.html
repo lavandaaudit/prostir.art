@@ -2,225 +2,179 @@
 <html lang="uk">
 <head>
 <meta charset="UTF-8">
-<title>Ібонаріум • Простір Світла</title>
+<title>CYBER GALLERY • Lavanda Audit</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
 <style>
-body {
-    margin:0;
-    overflow:hidden;
-    background:black;
-    font-family:monospace;
+html, body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: black;
+    font-family: monospace;
 }
-
-/* HUD */
-#hud {
-    position:fixed;
-    right:20px;
-    bottom:20px;
-    color:#00ffff;
-    font-size:12px;
-    opacity:0.8;
-    text-align:right;
-}
-
 #info {
-    position:fixed;
-    left:20px;
-    bottom:20px;
-    color:white;
-    background:rgba(0,0,0,0.6);
-    padding:12px;
-    border-left:3px solid #ff00ff;
-    max-width:300px;
-    display:none;
+    position: absolute;
+    color: #0ff;
+    background: rgba(0,0,0,0.7);
+    border: 1px solid #0ff;
+    padding: 10px;
+    display: none;
+    pointer-events: none;
+    text-shadow: 0 0 5px #0ff;
 }
 </style>
 </head>
 
 <body>
-
-<div id="hud">
-<span id="compass">⇢</span><br>
-<span id="nearest">—</span>
+<div id="info">
+<b>Woman</b><br>
+oil on canvas<br>
+Roman Katyuschenko<br>
+Ukraine, 2013<br>
+50 × 70 cm
 </div>
-
-<div id="info"></div>
 
 <script>
 let scene, camera, renderer;
-let stars=[], galleries=[];
-let raycaster=new THREE.Raycaster();
-let mouse=new THREE.Vector2();
-let clock=new THREE.Clock();
-
-const info=document.getElementById("info");
-const compass=document.getElementById("compass");
-const nearest=document.getElementById("nearest");
+let anomalies = [];
+let paintings = [];
+let raycaster = new THREE.Raycaster();
+let mouse = new THREE.Vector2();
+let info = document.getElementById("info");
 
 init();
 animate();
 
-/* ---------- INIT ---------- */
-function init(){
-    scene=new THREE.Scene();
-    scene.fog=new THREE.Fog(0x000000,30,400);
+function init() {
+    scene = new THREE.Scene();
+    scene.fog = new THREE.Fog(0x000000, 10, 80);
 
-    camera=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,0.1,1500);
-    camera.position.set(0,2,10);
+    camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.1, 200);
+    camera.position.set(0, 3, 20);
 
-    renderer=new THREE.WebGLRenderer({antialias:true});
-    renderer.setSize(innerWidth,innerHeight);
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(innerWidth, innerHeight);
     document.body.appendChild(renderer.domElement);
 
-    scene.add(new THREE.AmbientLight(0x111111));
-    const mainLight=new THREE.PointLight(0x00ffff,2,200);
-    mainLight.position.set(0,40,20);
-    scene.add(mainLight);
+    scene.add(new THREE.AmbientLight(0x00ffff, 0.3));
+    let neon = new THREE.PointLight(0x00ffff, 2, 50);
+    neon.position.set(0, 10, 0);
+    scene.add(neon);
 
+    createAnomalies();
     createStars();
-    createGallery();
 
-    addEventListener("resize",resize);
-    addEventListener("mousemove",mouseMove);
-    addEventListener("keydown",move);
+    window.addEventListener("resize", onResize);
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("keydown", move);
 }
 
-/* ---------- ЗІРКИ ---------- */
-function createStars(){
-    const geo=new THREE.SphereGeometry(0.12,8,8);
-    const mat=new THREE.MeshBasicMaterial({color:0xffffff});
+function createAnomalies() {
+    const radius = 15;
 
-    for(let i=0;i<2000;i++){
-        const s=new THREE.Mesh(geo,mat);
-        s.position.set(
-            THREE.MathUtils.randFloatSpread(600),
-            THREE.MathUtils.randFloatSpread(300),
-            THREE.MathUtils.randFloatSpread(600)
+    for (let i = 0; i < 13; i++) {
+        let angle = (i / 13) * Math.PI * 2;
+        let x = Math.cos(angle) * radius;
+        let z = Math.sin(angle) * radius;
+
+        // глітч-стовп
+        let geo = new THREE.CylinderGeometry(0.4, 0.6, 6, 12, 20, true);
+        let mat = new THREE.MeshBasicMaterial({
+            color: 0x00ffff,
+            wireframe: true,
+            transparent: true,
+            opacity: 0.6
+        });
+
+        let pillar = new THREE.Mesh(geo, mat);
+        pillar.position.set(x, 3, z);
+        pillar.userData.index = i;
+        anomalies.push(pillar);
+        scene.add(pillar);
+
+        // картина
+        let tex = new THREE.TextureLoader().load(`${i+1}.jpg`);
+        let pic = new THREE.Mesh(
+            new THREE.PlaneGeometry(4, 5),
+            new THREE.MeshBasicMaterial({
+                map: tex,
+                transparent: true,
+                opacity: 0
+            })
         );
-        s.userData.speed=Math.random()*0.03+0.01;
-        stars.push(s);
-        scene.add(s);
+        pic.position.set(x, 3, z);
+        pic.lookAt(0,3,0);
+        paintings.push(pic);
+        scene.add(pic);
     }
 }
 
-/* ---------- ГАЛЕРЕЯ ---------- */
-function createGallery(){
-    const loader=new THREE.TextureLoader();
-    const spacing=40;
-
-    for(let i=0;i<13;i++){
-        const g=new THREE.Group();
-
-        /* світловий стовп */
-        const pillar=new THREE.Mesh(
-            new THREE.CylinderGeometry(1.5,1.5,60,32,1,true),
-            new THREE.MeshBasicMaterial({
-                color:0x00ffff,
-                transparent:true,
-                opacity:0.12,
-                side:THREE.DoubleSide
-            })
+function createStars() {
+    let g = new THREE.BufferGeometry();
+    let v = [];
+    for (let i = 0; i < 2000; i++) {
+        v.push(
+            THREE.MathUtils.randFloatSpread(200),
+            THREE.MathUtils.randFloatSpread(200),
+            THREE.MathUtils.randFloatSpread(200)
         );
-        pillar.position.y=30;
-        g.add(pillar);
-
-        /* ядро (АНІМУЄТЬСЯ) */
-        const core=new THREE.Mesh(
-            new THREE.CylinderGeometry(0.4,0.4,60,16),
-            new THREE.MeshBasicMaterial({
-                color:0xff00ff,
-                transparent:true,
-                opacity:0.6
-            })
-        );
-        core.position.y=30;
-        g.add(core);
-
-        /* панель */
-        const panel=new THREE.Mesh(
-            new THREE.BoxGeometry(6,4,0.4),
-            new THREE.MeshBasicMaterial({
-                map:loader.load(`img/${i+1}.jpg`)
-            })
-        );
-        panel.position.set(0,10,2);
-        g.add(panel);
-
-        g.position.z=-i*spacing;
-        g.userData={index:i+1,pillar,core,panel};
-
-        galleries.push(g);
-        scene.add(g);
     }
+    g.setAttribute("position", new THREE.Float32BufferAttribute(v, 3));
+    let m = new THREE.PointsMaterial({ color: 0x00ffff, size: 0.7 });
+    scene.add(new THREE.Points(g, m));
 }
 
-/* ---------- INPUT ---------- */
-function mouseMove(e){
-    mouse.x=(e.clientX/innerWidth)*2-1;
-    mouse.y=-(e.clientY/innerHeight)*2+1;
-}
-
-function move(e){
-    const s=1;
-    if(e.key==="w") camera.translateZ(-s);
-    if(e.key==="s") camera.translateZ(s);
-    if(e.key==="a") camera.translateX(-s);
-    if(e.key==="d") camera.translateX(s);
-    if(e.key==="ArrowLeft") camera.rotation.y+=0.04;
-    if(e.key==="ArrowRight") camera.rotation.y-=0.04;
-}
-
-/* ---------- LOOP ---------- */
-function animate(){
+function animate() {
     requestAnimationFrame(animate);
-    const t=clock.getElapsedTime();
 
-    /* дрейф камери */
-    camera.position.y+=Math.sin(t*0.3)*0.002;
-    camera.rotation.z=Math.sin(t*0.2)*0.001;
+    anomalies.forEach((p, i) => {
+        // глітч
+        p.rotation.y += 0.01;
+        p.position.y = 3 + Math.sin(Date.now()*0.002 + i) * 0.3;
+        p.scale.x = 1 + Math.random()*0.02;
+        p.scale.z = 1 + Math.random()*0.02;
 
-    /* зірки */
-    stars.forEach(s=>{
-        s.position.y+=s.userData.speed;
-        if(s.position.y>150) s.position.y=-150;
+        // дистанція
+        let d = camera.position.distanceTo(p.position);
+        let pic = paintings[i];
+
+        if (d < 6) {
+            pic.material.opacity += 0.05;
+            p.material.opacity -= 0.05;
+            info.style.display = "block";
+        } else {
+            pic.material.opacity -= 0.05;
+            p.material.opacity += 0.05;
+            info.style.display = "none";
+        }
+
+        pic.material.opacity = THREE.MathUtils.clamp(pic.material.opacity, 0, 1);
+        p.material.opacity = THREE.MathUtils.clamp(p.material.opacity, 0.2, 0.8);
     });
 
-    /* світло + пульсація */
-    let closest=null, minDist=9999;
-
-    galleries.forEach(g=>{
-        const d=camera.position.distanceTo(g.position);
-
-        if(d<minDist){minDist=d; closest=g;}
-
-        const pulse=Math.max(0,1-d/30);
-        g.userData.core.position.y=30+Math.sin(t*2)*3;
-        g.userData.core.material.opacity=0.4+pulse*0.6;
-        g.userData.pillar.material.opacity=0.08+pulse*0.2;
-        g.userData.pillar.scale.setScalar(1+pulse*0.2);
-        g.userData.panel.scale.setScalar(1+pulse*0.05);
-    });
-
-    /* HUD */
-    compass.textContent = camera.rotation.y>0 ? "⇠" : "⇢";
-    nearest.textContent = closest ? `картина ${closest.userData.index}` : "—";
-
-    /* info */
-    raycaster.setFromCamera(mouse,camera);
-    const hit=raycaster.intersectObjects(scene.children,true);
-    if(hit.length){
-        info.style.display="block";
-        info.innerHTML=`Картина ${closest.userData.index}<br>Ібонаріум`;
-    } else info.style.display="none";
-
-    renderer.render(scene,camera);
+    renderer.render(scene, camera);
 }
 
-function resize(){
-    camera.aspect=innerWidth/innerHeight;
+function onMouseMove(e) {
+    mouse.x = (e.clientX / innerWidth) * 2 - 1;
+    mouse.y = -(e.clientY / innerHeight) * 2 + 1;
+    info.style.left = e.clientX + 15 + "px";
+    info.style.top = e.clientY + "px";
+}
+
+function move(e) {
+    const s = 0.6;
+    if (e.key === "w") camera.translateZ(-s);
+    if (e.key === "s") camera.translateZ(s);
+    if (e.key === "a") camera.translateX(-s);
+    if (e.key === "d") camera.translateX(s);
+}
+
+function onResize() {
+    camera.aspect = innerWidth / innerHeight;
     camera.updateProjectionMatrix();
-    renderer.setSize(innerWidth,innerHeight);
+    renderer.setSize(innerWidth, innerHeight);
 }
 </script>
 </body>
